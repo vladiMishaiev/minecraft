@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { buildWorld } from './world.js';
-import { createControls } from './controls.js';
+import { createControls, isMobile } from './controls.js';
 import { createMining } from './mining.js';
 import { createInventory } from './inventory.js';
 import { createQuest } from './quest.js';
@@ -69,6 +69,10 @@ window.addEventListener('mousedown', (e) => {
   if (controls.isLocked && e.button === 0) mining.mine();
 });
 
+window.addEventListener('mobile:mine', () => {
+  if (controls.isLocked) mining.mine();
+});
+
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
@@ -82,7 +86,7 @@ startBtn.addEventListener('click', () => {
 
 controls.addEventListener('lock', () => {
   crosshair.classList.remove('hidden');
-  hint.classList.remove('hidden');
+  if (!isMobile()) hint.classList.remove('hidden');
   quest.show();
 });
 controls.addEventListener('unlock', () => {

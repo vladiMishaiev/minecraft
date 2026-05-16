@@ -12,7 +12,12 @@ html, body, #game {
   font-family: var(--hebrew-font);
 }
 
-#canvas { display: block; width: 100%; height: 100%; }
+#canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;   /* prevent iOS scroll/zoom interfering with touch controls */
+}
 
 .hidden { display: none !important; }
 
@@ -301,4 +306,35 @@ html, body, #game {
   22%  { transform: translate(-50%,-50%) scale(1.0);  opacity: 1; }
   75%  { transform: translate(-50%,-58%) scale(1.0);  opacity: 1; }
   100% { transform: translate(-50%,-80%) scale(0.95); opacity: 0; }
+}
+
+/* ── Mobile / touch layout ──────────────────────────────────────────────── */
+
+/* Keep the crosshair on mobile — useful as a mine aim point */
+@media (hover: none) and (pointer: coarse) {
+  #hint { display: none !important; }   /* WASD hint is irrelevant on touch */
+
+  /* Shrink quest panel so it doesn't eat too much screen space */
+  #quest-panel {
+    min-width: 120px;
+    max-width: 140px;
+    left: 8px;
+    padding: 8px 6px;
+  }
+  .quest-title { font-size: 11px; }
+  .qi          { font-size: 12px; padding: 4px 4px; }
+  .qi-emoji    { font-size: 14px; }
+
+  /* Letter slots: a bit smaller on phone */
+  .ls {
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+  }
+
+  /* Word progress sits above the ⛏️ / ↑ buttons (which sit at bottom ~80px) */
+  #word-progress { bottom: 168px; }
+
+  /* Start-screen button: bigger tap target */
+  #start-btn { padding: 18px; font-size: 20px; }
 }
