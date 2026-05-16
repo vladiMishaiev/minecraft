@@ -1,0 +1,304 @@
+:root {
+  --hebrew-font: -apple-system, "Heebo", "Arial Hebrew", system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body, #game {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #1a1a2e;
+  font-family: var(--hebrew-font);
+}
+
+#canvas { display: block; width: 100%; height: 100%; }
+
+.hidden { display: none !important; }
+
+#crosshair {
+  position: fixed;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 28px;
+  font-weight: 200;
+  text-shadow: 0 0 4px rgba(0,0,0,0.8);
+  pointer-events: none;
+  user-select: none;
+  z-index: 10;
+}
+
+#hotbar {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  padding: 8px;
+  background: rgba(0,0,0,0.55);
+  border-radius: 12px;
+  z-index: 10;
+}
+
+.slot {
+  width: 56px;
+  height: 56px;
+  background: rgba(255,255,255,0.08);
+  border: 2px solid rgba(255,255,255,0.25);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: 700;
+  color: #fff;
+  font-family: "SF Pro Display", system-ui, sans-serif;
+  position: relative;
+}
+
+.slot .count {
+  position: absolute;
+  bottom: 2px;
+  right: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #ffd866;
+  font-family: var(--hebrew-font);
+}
+
+.slot.empty { color: rgba(255,255,255,0.15); }
+
+#hint {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.55);
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  z-index: 10;
+}
+
+#start-screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  z-index: 100;
+}
+
+.start-card {
+  max-width: 480px;
+  width: 90%;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 16px;
+  padding: 32px;
+  color: #fff;
+  text-align: center;
+  backdrop-filter: blur(12px);
+}
+
+.start-card h1 {
+  font-size: 36px;
+  margin-bottom: 8px;
+}
+
+.tag {
+  font-size: 16px;
+  color: #b8b8d4;
+  margin-bottom: 24px;
+}
+
+.rules {
+  list-style: none;
+  text-align: right;
+  margin: 0 0 28px;
+  padding: 0;
+}
+
+.rules li {
+  padding: 10px 14px;
+  margin-bottom: 8px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 8px;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+#start-btn {
+  width: 100%;
+  padding: 14px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #1a1a2e;
+  background: #ffd866;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: var(--hebrew-font);
+  transition: transform 0.1s;
+}
+
+#start-btn:hover { transform: translateY(-1px); }
+#start-btn:active { transform: translateY(0); }
+
+.hint-small {
+  margin-top: 12px;
+  font-size: 13px;
+  color: #888aa8;
+}
+
+/* ── Quest panel (left side word list) ─────────────────────────────────── */
+#quest-panel {
+  position: fixed;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  direction: ltr;           /* English words always LTR */
+  background: rgba(0,0,0,0.62);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 14px;
+  padding: 12px 10px;
+  min-width: 170px;
+  z-index: 10;
+  backdrop-filter: blur(8px);
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.quest-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffd866;
+  letter-spacing: 0.5px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+  margin-bottom: 8px;
+  text-align: center;
+  direction: rtl;           /* Hebrew title stays RTL */
+}
+
+/* Individual word row */
+.qi {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 6px;
+  border-radius: 8px;
+  font-family: "SF Pro Display", system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.55);
+  transition: background 0.2s;
+  margin-bottom: 2px;
+}
+
+.qi-pre   { width: 14px; font-size: 12px; flex-shrink: 0; }
+.qi-emoji { font-size: 16px; }
+.qi-text  { flex: 1; }
+
+.qi-current {
+  color: #ffd866;
+  background: rgba(255,216,102,0.12);
+  border: 1px solid rgba(255,216,102,0.30);
+  animation: qi-pulse 2s ease-in-out infinite;
+}
+
+.qi-done {
+  color: rgba(255,255,255,0.28);
+  text-decoration: line-through;
+}
+
+.qi-all-done {
+  text-align: center;
+  padding: 12px 6px;
+  font-size: 15px;
+  color: #ffd866;
+  line-height: 1.6;
+}
+
+@keyframes qi-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,216,102,0); }
+  50%       { box-shadow: 0 0 8px 2px rgba(255,216,102,0.25); }
+}
+
+/* ── Word progress bar (above hotbar) ──────────────────────────────────── */
+#word-progress {
+  position: fixed;
+  bottom: 104px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  direction: ltr;   /* prevent RTL html dir from reversing letter order */
+  gap: 6px;
+  z-index: 10;
+}
+
+/* Each letter slot */
+.ls {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border: 2px solid rgba(255,255,255,0.22);
+  border-radius: 8px;
+  font-family: "SF Pro Display", system-ui, sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.30);
+  background: rgba(0,0,0,0.45);
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.ls.ls-on {
+  color: #ffd866;
+  background: rgba(255,216,102,0.16);
+  border-color: rgba(255,216,102,0.65);
+}
+
+/* ── Celebration overlay ────────────────────────────────────────────────── */
+#celebrate {
+  position: fixed;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;
+  z-index: 300;
+}
+
+#celebrate.running {
+  animation: celebPop 2.4s ease-out forwards;
+}
+
+.cel-emoji { font-size: 72px; line-height: 1; }
+.cel-word  {
+  font-size: 52px;
+  font-weight: 800;
+  color: #ffd866;
+  font-family: "SF Pro Display", system-ui, sans-serif;
+  text-shadow: 0 0 30px rgba(255,200,0,0.8), 0 2px 8px rgba(0,0,0,0.8);
+  letter-spacing: 6px;
+}
+.cel-sub   {
+  font-size: 22px;
+  color: #fff;
+  margin-top: 6px;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.7);
+  font-family: var(--hebrew-font);
+}
+
+@keyframes celebPop {
+  0%   { transform: translate(-50%,-50%) scale(0.4); opacity: 0; }
+  12%  { transform: translate(-50%,-50%) scale(1.15); opacity: 1; }
+  22%  { transform: translate(-50%,-50%) scale(1.0);  opacity: 1; }
+  75%  { transform: translate(-50%,-58%) scale(1.0);  opacity: 1; }
+  100% { transform: translate(-50%,-80%) scale(0.95); opacity: 0; }
+}

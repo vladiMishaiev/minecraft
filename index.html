@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>כורי האותיות</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="game">
+      <canvas id="canvas"></canvas>
+
+      <div id="crosshair" class="hidden">+</div>
+
+      <div id="hotbar" class="hidden"></div>
+
+      <div id="hint" class="hidden">
+        <div>WASD לתנועה · רווח לקפיצה · עכבר להסתכלות · קליק לכרייה</div>
+      </div>
+
+      <!-- Left word-list panel -->
+      <div id="quest-panel" class="hidden">
+        <div class="quest-title">📝 מילות המשחק</div>
+        <div id="quest-list"></div>
+      </div>
+
+      <!-- Current-word letter slots (above hotbar) -->
+      <div id="word-progress" class="hidden"></div>
+
+      <!-- Celebration overlay (shown on word completion) -->
+      <div id="celebrate" style="display:none"></div>
+
+      <div id="start-screen">
+        <div class="start-card">
+          <h1>כורי האותיות ⛏️</h1>
+          <p class="tag">משחק לתרגול האותיות באנגלית</p>
+          <ol class="rules">
+            <li>הסתובבו על האי וחפשו בלוקים עם אותיות 🔡</li>
+            <li>לחצו עם העכבר כדי לכרות אות ⛏️</li>
+            <li>ראו את המילה הנוכחית בצד שמאל 📋</li>
+            <li>אספו את האותיות הנכונות להרכיב את המילה! ✨</li>
+          </ol>
+          <button id="start-btn">התחילו לשחק</button>
+          <p class="hint-small">להפסקה: לחצו Esc</p>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
