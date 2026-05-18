@@ -283,10 +283,10 @@ function buildVilla(scene) {
 
   // ── Marble interior floor ──────────────────────────────────────────────
   const floorTex = villaFloorTexture();
-  floorTex.repeat.set(5, 4);
+  floorTex.repeat.set(4, 6);  // ~16 oak planks running north-south across the room
   const floorMesh = new THREE.Mesh(
     new THREE.PlaneGeometry(W * 2 - 1, D * 2 - 1),
-    new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.52, metalness: 0.04 })
+    new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.78, metalness: 0 })
   );
   floorMesh.rotation.x = -Math.PI / 2;
   floorMesh.position.set(0, 0.02, 0);

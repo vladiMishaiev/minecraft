@@ -242,30 +242,57 @@ export function villaFloorTexture() {
   c.width = c.height = size;
   const ctx = c.getContext('2d');
 
-  // Marble off-white base
-  ctx.fillStyle = '#ede8df';
-  ctx.fillRect(0, 0, size, size);
+  // 4 horizontal oak planks per tile
+  const nPlanks = 4;
+  const ph = size / nPlanks;   // plank height in pixels = 64
 
-  // Subtle veining
-  for (let i = 0; i < 7; i++) {
-    ctx.strokeStyle = `rgba(175,158,138,${0.12 + Math.random() * 0.14})`;
-    ctx.lineWidth = 1 + Math.random() * 1.5;
-    ctx.beginPath();
-    let vx = Math.random() * size, vy = Math.random() * size;
-    ctx.moveTo(vx, vy);
-    for (let s = 0; s < 5; s++) {
-      vx += (Math.random() - 0.5) * 70; vy += (Math.random() - 0.5) * 70;
-      ctx.lineTo(vx, vy);
+  for (let p = 0; p < nPlanks; p++) {
+    const y0 = p * ph;
+
+    // Warm oak base with a slight per-plank colour variation
+    const v  = ((Math.random() * 34 - 17) | 0);
+    const r  = Math.max(0, Math.min(255, 208 + v));
+    const g  = Math.max(0, Math.min(255, 138 + ((v * 0.6) | 0)));
+    const bv = Math.max(0, Math.min(255,  72 + ((v * 0.25) | 0)));
+    ctx.fillStyle = `rgb(${r},${g},${bv})`;
+    ctx.fillRect(0, y0, size, ph - 1);  // ph-1 leaves a 1px gap at bottom
+
+    // Subtle horizontal grain lines within the plank
+    for (let i = 0; i < 28; i++) {
+      const gy    = y0 + 1 + Math.random() * (ph - 3);
+      const alpha = 0.04 + Math.random() * 0.20;
+      ctx.strokeStyle = `rgba(${(r - 28)|0},${(g - 20)|0},${(bv - 12)|0},${alpha})`;
+      ctx.lineWidth   = 0.5 + Math.random();
+      ctx.beginPath();
+      ctx.moveTo(0,    gy);
+      ctx.lineTo(size, gy + (Math.random() - 0.5) * 10);
+      ctx.stroke();
     }
-    ctx.stroke();
+
+    // Occasional wood knot
+    if (Math.random() < 0.45) {
+      const kx = 20 + Math.random() * (size - 40);
+      const ky = y0 + ph * (0.3 + Math.random() * 0.4);
+      const kr = 4 + Math.random() * 6;
+      ctx.beginPath();
+      ctx.ellipse(kx, ky, kr, kr * 0.55, 0, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(${(r - 45)|0},${(g - 32)|0},${(bv - 20)|0},0.55)`;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      // Second ring for depth
+      ctx.beginPath();
+      ctx.ellipse(kx, ky, kr * 1.7, kr * 0.9, 0, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(${(r - 25)|0},${(g - 18)|0},${(bv - 10)|0},0.25)`;
+      ctx.stroke();
+    }
   }
 
-  // 64-px tile grid
-  ctx.strokeStyle = 'rgba(145,130,115,0.55)';
-  ctx.lineWidth = 2;
-  for (let v = 0; v <= size; v += 64) {
-    ctx.beginPath(); ctx.moveTo(v, 0); ctx.lineTo(v, size); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(0, v); ctx.lineTo(size, v); ctx.stroke();
+  // Dark gap lines between planks
+  ctx.strokeStyle = 'rgba(48,22,6,0.70)';
+  ctx.lineWidth   = 1.5;
+  for (let p = 1; p < nPlanks; p++) {
+    const y = p * ph;
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(size, y); ctx.stroke();
   }
 
   const tex = new THREE.CanvasTexture(c);
