@@ -138,124 +138,262 @@ function makeEatingSpots(scene) {
  * Builds an enterable villa centered at the world origin.
  * Returns an array of wall Meshes that must be passed to the collision system.
  *
- * Layout (top-down):
- *   W=7  → x: -7 .. +7   (15 blocks wide)
- *   D=6  → z: -6 .. +6   (13 blocks deep)
- *   H=5  → wall height 5 blocks (~5 m, airy interior)
- *
- * Door: south wall (z=+6), x=-1..+1, rows 0-1 removed (clear 2-unit gap).
- * Player (height 1.6) fits through a 2-row gap — row 2 (y=2.5) is above head.
+ * Layout  W=7 (x: -7..+7, 15 wide)  D=6 (z: -6..+6, 13 deep)  H=5 (wall rows)
+ * Roof:   gabled, RISE=4 blocks, ridge runs E-W at z=0, y=H+RISE=9
+ * Door:   south wall (z=+6), x=-1..+1, rows 0-1 open  (player height 1.6 fits)
  */
 function buildVilla(scene) {
-  const W = 7, D = 6, H = 5;
+  const W = 7, D = 6, H = 5, RISE = 4;
   const wallBlocks = [];
 
-  // Shared geometry — reused by every wall block (one draw call per unique material)
-  const geo  = new THREE.BoxGeometry(1, 1, 1);
-  const wallTex = villaWallTexture();
-  const wallMat = new THREE.MeshStandardMaterial({ map: wallTex, roughness: 0.75 });
+  // Shared 1×1×1 geometry; white painted wall material (no texture — clean look)
+  const geo     = new THREE.BoxGeometry(1, 1, 1);
+  const wallMat = new THREE.MeshStandardMaterial({ color: 0xfafaf7, roughness: 0.88 });
 
   function addBlock(x, yRow, z) {
     const m = new THREE.Mesh(geo, wallMat);
     m.position.set(x, yRow + 0.5, z);
-    m.castShadow  = true;
-    m.receiveShadow = true;
+    m.castShadow = m.receiveShadow = true;
     scene.add(m);
     wallBlocks.push(m);
   }
 
-  // ── South wall (z = +D, front/entrance) ────────────────────────────────
-  // Door: |x| ≤ 1, rows 0 & 1 removed.  Rows 2-4 remain as lintel.
-  for (let x = -W; x <= W; x++) {
-    for (let y = 0; y < H; y++) {
-      if (Math.abs(x) <= 1 && y < 2) continue; // door opening
-      addBlock(x, y, D);
-    }
+  // Decorative / furniture box — y is the BOTTOM face so callers can say "y=0" for floor level
+  function deco(w, h, d, color, x, y, z, rough = 0.82, extras = {}) {
+    const m = new THREE.Mesh(
+      new THREE.BoxGeometry(w, h, d),
+      new THREE.MeshStandardMaterial({ color, roughness: rough, ...extras })
+    );
+    m.position.set(x, y + h / 2, z);
+    m.castShadow = m.receiveShadow = true;
+    scene.add(m);
+    return m;
   }
 
-  // ── North wall (z = -D, back) ───────────────────────────────────────────
-  // Two windows: |x| ∈ [3,4] at rows 1-2
-  for (let x = -W; x <= W; x++) {
+  // ── Walls ─────────────────────────────────────────────────────────────
+
+  // South (z=+D): door at |x|≤1, rows 0-1
+  for (let x = -W; x <= W; x++)
+    for (let y = 0; y < H; y++) {
+      if (Math.abs(x) <= 1 && y < 2) continue;
+      addBlock(x, y, D);
+    }
+
+  // North (z=-D): two windows at |x|∈[3,4], rows 1-2
+  for (let x = -W; x <= W; x++)
     for (let y = 0; y < H; y++) {
       if (Math.abs(x) >= 3 && Math.abs(x) <= 4 && y >= 1 && y <= 2) continue;
       addBlock(x, y, -D);
     }
-  }
 
-  // ── East wall (x = +W) — z from -(D-1) to +(D-1) (corners belong to N/S) ──
-  // Window: |z| ≤ 1 at rows 1-2
-  for (let z = -(D - 1); z <= D - 1; z++) {
+  // East (x=+W) and West (x=-W): window at |z|≤1, rows 1-2
+  for (let z = -(D - 1); z <= D - 1; z++)
     for (let y = 0; y < H; y++) {
-      if (Math.abs(z) <= 1 && y >= 1 && y <= 2) continue;
-      addBlock(W, y, z);
+      const isWin = Math.abs(z) <= 1 && y >= 1 && y <= 2;
+      if (!isWin) { addBlock(W, y, z); addBlock(-W, y, z); }
     }
-  }
 
-  // ── West wall (x = -W) ─────────────────────────────────────────────────
+  // ── Gabled end fills (triangular section above H at x=±W) ─────────────
+  // Roof height at each z: H + RISE*(1 - |z|/D)
   for (let z = -(D - 1); z <= D - 1; z++) {
-    for (let y = 0; y < H; y++) {
-      if (Math.abs(z) <= 1 && y >= 1 && y <= 2) continue;
-      addBlock(-W, y, z);
-    }
+    const roofH = H + RISE * (1 - Math.abs(z) / D);
+    for (let r = H; r < H + RISE; r++)
+      if (r + 0.5 < roofH) { addBlock(W, r, z); addBlock(-W, r, z); }
   }
 
-  // ── Entrance columns (outside south wall, flanking the door) ───────────
-  const colGeo = new THREE.BoxGeometry(0.7, 1, 0.7);
-  const colMat = new THREE.MeshStandardMaterial({ color: 0xf0e8d8, roughness: 0.5 });
+  // ── Glass windows ──────────────────────────────────────────────────────
+  const glassMat = new THREE.MeshStandardMaterial({
+    color: 0xa8d8f8, transparent: true, opacity: 0.28,
+    roughness: 0.0, metalness: 0.55, side: THREE.DoubleSide,
+  });
+  function glass(w, h, d, x, y, z) {
+    const g = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), glassMat);
+    g.position.set(x, y, z);
+    scene.add(g);
+  }
+  glass(2, 2, 0.07, -3.5, 2.0, -D);   // north-left window
+  glass(2, 2, 0.07,  3.5, 2.0, -D);   // north-right window
+  glass(0.07, 2, 3,  W, 2.0, 0);      // east window
+  glass(0.07, 2, 3, -W, 2.0, 0);      // west window
+
+  // ── Pitched terracotta roof (two tilted panels + ridge beam) ───────────
+  const roofTex = villaRoofTexture();
+  roofTex.repeat.set(7, 2);
+  const roofMat  = new THREE.MeshStandardMaterial({ map: roofTex, roughness: 0.82, side: THREE.DoubleSide });
+  const angle    = Math.atan2(RISE, D);           // ≈ 33.7°
+  const slopeLen = Math.sqrt(D * D + RISE * RISE); // ≈ 7.21
+  const yMid     = H + RISE / 2;                   // y-midpoint of each slope face
+
+  // South slope: centre at (0, yMid, D/2), tilted so south eave (z=+D) is lower
+  const sSlope = new THREE.Mesh(new THREE.BoxGeometry(W * 2 + 2.6, 0.44, slopeLen), roofMat);
+  sSlope.rotation.x =  angle;
+  sSlope.position.set(0, yMid, D / 2);
+  sSlope.castShadow = true;
+  scene.add(sSlope);
+
+  // North slope
+  const nSlope = new THREE.Mesh(new THREE.BoxGeometry(W * 2 + 2.6, 0.44, slopeLen), roofMat);
+  nSlope.rotation.x = -angle;
+  nSlope.position.set(0, yMid, -D / 2);
+  nSlope.castShadow = true;
+  scene.add(nSlope);
+
+  // Ridge beam (dark terracotta cap at peak)
+  const ridge = new THREE.Mesh(
+    new THREE.BoxGeometry(W * 2 + 3.0, 0.46, 0.78),
+    new THREE.MeshStandardMaterial({ color: 0x7a2c10, roughness: 0.78 })
+  );
+  ridge.position.set(0, H + RISE + 0.23, 0);
+  ridge.castShadow = true;
+  scene.add(ridge);
+
+  // ── Entrance columns (outside south wall, flanking door) ──────────────
+  const colMat = new THREE.MeshStandardMaterial({ color: 0xf0ece0, roughness: 0.55 });
+  const colGeo = new THREE.BoxGeometry(0.65, 1, 0.65);
   for (const cx of [-3, 3]) {
-    for (let y = 0; y < H + 1; y++) {  // one block taller than walls
+    for (let y = 0; y <= H + 2; y++) {
       const col = new THREE.Mesh(colGeo, colMat);
       col.position.set(cx, y + 0.5, D + 1);
       col.castShadow = true;
       scene.add(col);
-      wallBlocks.push(col);             // participates in collision
+      wallBlocks.push(col);       // solid collision
     }
+    // Column capital
+    const cap = new THREE.Mesh(new THREE.BoxGeometry(0.92, 0.22, 0.92), colMat);
+    cap.position.set(cx, H + 3 + 0.11, D + 1);
+    scene.add(cap);
   }
 
-  // ── Terracotta roof (decorative mesh, no collision) ────────────────────
-  const roofTex = villaRoofTexture();
-  roofTex.repeat.set(6, 5);
-  const roofMat  = new THREE.MeshStandardMaterial({ map: roofTex, roughness: 0.82 });
-  const roofMesh = new THREE.Mesh(new THREE.BoxGeometry(W * 2 + 2.6, 0.5, D * 2 + 2.6), roofMat);
-  roofMesh.position.set(0, H + 0.25, 0);
-  roofMesh.castShadow   = true;
-  roofMesh.receiveShadow = true;
-  scene.add(roofMesh);
-
-  // ── Cornice band at the top of all walls ───────────────────────────────
-  const cornMesh = new THREE.Mesh(
-    new THREE.BoxGeometry(W * 2 + 1.8, 0.35, D * 2 + 1.8),
-    new THREE.MeshStandardMaterial({ color: 0xe6d8c4, roughness: 0.65 })
+  // ── Cornice band ───────────────────────────────────────────────────────
+  const corn = new THREE.Mesh(
+    new THREE.BoxGeometry(W * 2 + 1.9, 0.36, D * 2 + 1.9),
+    new THREE.MeshStandardMaterial({ color: 0xe0d4c2, roughness: 0.65 })
   );
-  cornMesh.position.set(0, H - 0.18, 0);
-  scene.add(cornMesh);
+  corn.position.set(0, H - 0.18, 0);
+  scene.add(corn);
+
+  // ── Chimney stack (north gable exterior, above roof) ──────────────────
+  const chimMat = new THREE.MeshStandardMaterial({ color: 0xb07850, roughness: 0.9 });
+  for (let yc = H; yc <= H + RISE + 2; yc++) {
+    const ch = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.0, 1.0), chimMat);
+    ch.position.set(0, yc + 0.5, -D);
+    ch.castShadow = true;
+    scene.add(ch);
+  }
 
   // ── Marble interior floor ──────────────────────────────────────────────
   const floorTex = villaFloorTexture();
   floorTex.repeat.set(5, 4);
-  const floorMat  = new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.52, metalness: 0.04 });
-  const floorMesh = new THREE.Mesh(new THREE.PlaneGeometry(W * 2 - 1, D * 2 - 1), floorMat);
+  const floorMesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(W * 2 - 1, D * 2 - 1),
+    new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.52, metalness: 0.04 })
+  );
   floorMesh.rotation.x = -Math.PI / 2;
   floorMesh.position.set(0, 0.02, 0);
   floorMesh.receiveShadow = true;
   scene.add(floorMesh);
 
-  // ── Stone approach path (south entrance to spawn) ─────────────────────
-  const pathMat  = new THREE.MeshStandardMaterial({ color: 0xcbbfa8, roughness: 0.92 });
-  const pathMesh = new THREE.Mesh(new THREE.PlaneGeometry(4, 10), pathMat);
+  // ── Stone approach path ────────────────────────────────────────────────
+  const pathMesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(4, 10),
+    new THREE.MeshStandardMaterial({ color: 0xcbbfa8, roughness: 0.92 })
+  );
   pathMesh.rotation.x = -Math.PI / 2;
-  pathMesh.position.set(0, 0.015, D + 5);  // z = 6..16, centred on door
+  pathMesh.position.set(0, 0.015, D + 5);
   pathMesh.receiveShadow = true;
   scene.add(pathMesh);
 
-  // ── Golden chandelier (decorative, visible from inside) ───────────────
-  const chandMat  = new THREE.MeshStandardMaterial({
-    color: 0xffd700, emissive: 0xffaa00, emissiveIntensity: 0.35,
-    metalness: 0.85, roughness: 0.15,
-  });
-  const chandMesh = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.28, 1.4), chandMat);
-  chandMesh.position.set(0, H - 0.7, 0);   // hanging near ceiling
-  scene.add(chandMesh);
+  // ══ Interior furnishings ═══════════════════════════════════════════════
+
+  // ── Dining table (centre-south half) ──────────────────────────────────
+  const TZ = 2.5;
+  deco(3.0, 0.10, 1.4, 0x8b5e3c,  0,    0.88, TZ);       // tabletop
+  for (const [lx, lz] of [[-1.3, TZ-0.55],[1.3, TZ-0.55],[-1.3, TZ+0.55],[1.3, TZ+0.55]])
+    deco(0.12, 0.88, 0.12, 0x6b4226, lx, 0, lz);          // legs
+
+  // Chairs: seat + directional back + 4 legs
+  function chair(cx, cz, dirX, dirZ) {
+    const sc = 0x5a7a5a, wc = 0x6b4226;
+    deco(0.62, 0.07, 0.58, sc, cx, 0.50, cz);  // seat
+    if (dirZ !== 0)
+      deco(0.62, 0.52, 0.07, sc, cx, 0.57, cz + dirZ * 0.29); // N/S back
+    else
+      deco(0.07, 0.52, 0.58, sc, cx + dirX * 0.29, 0.57, cz); // E/W back
+    for (const [ox, oz] of [[-0.24,-0.24],[0.24,-0.24],[-0.24,0.24],[0.24,0.24]])
+      deco(0.07, 0.50, 0.07, wc, cx + ox, 0, cz + oz);
+  }
+  chair( 0,     TZ - 1.1,  0, -1);   // south chair, back faces south
+  chair( 0,     TZ + 1.1,  0,  1);   // north chair, back faces north
+  chair(-1.85,  TZ,        -1,  0);   // west chair,  back faces west
+  chair( 1.85,  TZ,         1,  0);   // east chair,  back faces east
+
+  // ── Chandelier above dining table ──────────────────────────────────────
+  const chand = new THREE.Mesh(
+    new THREE.BoxGeometry(1.4, 0.24, 1.4),
+    new THREE.MeshStandardMaterial({
+      color: 0xffd700, emissive: 0xffbb00, emissiveIntensity: 0.50,
+      metalness: 0.88, roughness: 0.12,
+    })
+  );
+  chand.position.set(0, H - 0.70, TZ);
+  scene.add(chand);
+  // Thin chain from ceiling to chandelier
+  const chain = new THREE.Mesh(
+    new THREE.BoxGeometry(0.06, H - 0.82, 0.06),
+    new THREE.MeshStandardMaterial({ color: 0xc8a000, metalness: 0.92, roughness: 0.22 })
+  );
+  chain.position.set(0, H - 0.82 - (H - 0.82) / 2, TZ);
+  scene.add(chain);
+
+  // ── Fireplace (centre of north wall) ──────────────────────────────────
+  const FZ = -D + 0.38;
+  deco(0.52, 2.4, 0.44, 0x8a8070,  -1.30, 0, FZ);          // left pillar
+  deco(0.52, 2.4, 0.44, 0x8a8070,   1.30, 0, FZ);          // right pillar
+  deco(3.20, 0.22, 0.52, 0x8a8070,  0,  2.4, FZ - 0.04);   // mantel shelf
+  deco(1.60, 1.60, 0.18, 0x1a0e08,  0,  0,   FZ);          // firebox recess
+  // Outer flame
+  const fl1 = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.9, 0.14),
+    new THREE.MeshStandardMaterial({ color: 0xff5500, emissive: 0xff2200, emissiveIntensity: 1.2, roughness: 0.5 }));
+  fl1.position.set(0, 0.45 + 0.04, FZ + 0.02);
+  scene.add(fl1);
+  // Inner flame (brighter yellow core)
+  const fl2 = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.55, 0.12),
+    new THREE.MeshStandardMaterial({ color: 0xffdd00, emissive: 0xffcc00, emissiveIntensity: 1.6, roughness: 0.4 }));
+  fl2.position.set(0, 0.275 + 0.12, FZ + 0.04);
+  scene.add(fl2);
+  // Decorative items on mantel shelf
+  deco(0.22, 0.42, 0.22, 0x8fbccc, -0.9, 2.62, FZ - 0.2, 0.1);  // blue vase left
+  deco(0.22, 0.42, 0.22, 0x8fbccc,  0.9, 2.62, FZ - 0.2, 0.1);  // blue vase right
+  deco(0.5, 0.08, 0.5, 0x555555, 0, 2.62, FZ - 0.1, 0.5);        // framed picture placeholder
+
+  // ── Bookshelves (west interior wall) ──────────────────────────────────
+  const SZ = -1.5;   // shelf z-centre
+  deco(0.34, 2.2, 2.0, 0x7b5c3c, -(W - 1.18), 0, SZ);     // shelf frame
+  const bookCols = [0xff6b6b,0x4fc3f7,0x81c784,0xffb74d,0xba68c8,0xe57373,0x4db6ac,0xff9aa2];
+  let bci = 0;
+  for (let row = 0; row < 3; row++) {
+    for (let bi = 0; bi < 4; bi++) {
+      const bz  = SZ - 0.82 + bi * 0.44;
+      const byt = 0.22 + row * 0.70;
+      const book = new THREE.Mesh(
+        new THREE.BoxGeometry(0.22, 0.58, 0.20),
+        new THREE.MeshStandardMaterial({ color: bookCols[bci++ % bookCols.length], roughness: 0.88 })
+      );
+      book.position.set(-(W - 1.04), byt + 0.29, bz);
+      book.castShadow = true;
+      scene.add(book);
+    }
+  }
+
+  // ── Potted plants (SW and SE inside corners) ───────────────────────────
+  function plant(px, pz) {
+    deco(0.48, 0.48, 0.48, 0x9c6530,  px, 0,    pz);  // terracotta pot
+    deco(0.62, 0.66, 0.62, 0x3a8a2a,  px, 0.50, pz);  // lower foliage
+    deco(0.44, 0.54, 0.44, 0x2e7e20,  px, 1.16, pz);  // upper foliage
+    deco(0.22, 0.16, 0.22, 0xff80aa,  px, 1.70, pz);  // flower
+  }
+  plant(-(W - 1.2), D - 1.2);   // SW corner
+  plant(  W - 1.2,  D - 1.2);   // SE corner
 
   return wallBlocks;
 }
