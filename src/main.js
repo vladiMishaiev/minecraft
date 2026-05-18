@@ -22,7 +22,7 @@ scene.background = new THREE.Color(0xd6ecf7);
 scene.fog = new THREE.Fog(0xd6ecf7, 80, 200);
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 500);
-camera.position.set(0, 1.6, 6);
+camera.position.set(0, 1.6, 14);
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -44,7 +44,7 @@ scene.add(sun);
 const ambient = new THREE.AmbientLight(0xb8d4ff, 0.55);
 scene.add(ambient);
 
-const { letterBlocks, treeColliders, eatingSpots } = buildWorld(scene);
+const { letterBlocks, treeColliders, eatingSpots, villaBlocks } = buildWorld(scene);
 setFoodSpots(eatingSpots);
 spawnAnimals(scene);
 spawnSeaAnimals(scene);
@@ -53,7 +53,7 @@ const inventory = createInventory(hotbarEl);
 const quest     = createQuest(inventory);
 const { controls, update: updateControls } = createControls(camera, canvas);
 scene.add(controls.getObject());
-controls.getObject().position.set(0, 1.6, 6);
+controls.getObject().position.set(0, 1.6, 14);
 
 const mining = createMining({
   camera,
@@ -101,7 +101,7 @@ function tick() {
   quest.update();
   updateAnimals(dt);
   updateSeaAnimals(dt);
-  updateControls(dt, letterBlocks, [...treeColliders, ...getAnimalColliders()]);
+  updateControls(dt, [...letterBlocks, ...villaBlocks], [...treeColliders, ...getAnimalColliders()]);
   mining.update();
   renderer.render(scene, camera);
   requestAnimationFrame(tick);

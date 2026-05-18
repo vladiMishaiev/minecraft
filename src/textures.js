@@ -173,6 +173,110 @@ export function waterTexture() {
   return tex;
 }
 
+// ── Villa textures ────────────────────────────────────────────────────────
+
+export function villaWallTexture() {
+  if (cache.has('__villa_wall')) return cache.get('__villa_wall');
+  const size = 128;
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const ctx = c.getContext('2d');
+
+  // Warm cream base
+  ctx.fillStyle = '#f2eadb';
+  ctx.fillRect(0, 0, size, size);
+
+  // Staggered brickwork mortar lines
+  ctx.strokeStyle = 'rgba(155,130,100,0.50)';
+  ctx.lineWidth = 2;
+  const bh = 32;
+  for (let row = 0; row * bh <= size; row++) {
+    const y0 = row * bh;
+    ctx.beginPath(); ctx.moveTo(0, y0); ctx.lineTo(size, y0); ctx.stroke();
+    const xOff = (row % 2) * 32;
+    for (let x = xOff; x <= size; x += 64) {
+      ctx.beginPath(); ctx.moveTo(x, y0); ctx.lineTo(x, y0 + bh); ctx.stroke();
+    }
+  }
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.magFilter = THREE.NearestFilter;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  cache.set('__villa_wall', tex);
+  return tex;
+}
+
+export function villaRoofTexture() {
+  if (cache.has('__villa_roof')) return cache.get('__villa_roof');
+  const size = 128;
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const ctx = c.getContext('2d');
+
+  const shades = ['#c44a28', '#d05530', '#b83e22'];
+  for (let row = 0; row < 8; row++) {
+    const y0 = row * 16;
+    ctx.fillStyle = shades[row % shades.length];
+    ctx.fillRect(0, y0, size, 15);
+    ctx.strokeStyle = 'rgba(70,18,5,0.55)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, y0 + 15); ctx.lineTo(size, y0 + 15); ctx.stroke();
+    const xOff = (row % 2) * 20;
+    for (let x = xOff; x <= size; x += 40) {
+      ctx.beginPath(); ctx.moveTo(x, y0); ctx.lineTo(x, y0 + 15); ctx.stroke();
+    }
+  }
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  cache.set('__villa_roof', tex);
+  return tex;
+}
+
+export function villaFloorTexture() {
+  if (cache.has('__villa_floor')) return cache.get('__villa_floor');
+  const size = 256;
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const ctx = c.getContext('2d');
+
+  // Marble off-white base
+  ctx.fillStyle = '#ede8df';
+  ctx.fillRect(0, 0, size, size);
+
+  // Subtle veining
+  for (let i = 0; i < 7; i++) {
+    ctx.strokeStyle = `rgba(175,158,138,${0.12 + Math.random() * 0.14})`;
+    ctx.lineWidth = 1 + Math.random() * 1.5;
+    ctx.beginPath();
+    let vx = Math.random() * size, vy = Math.random() * size;
+    ctx.moveTo(vx, vy);
+    for (let s = 0; s < 5; s++) {
+      vx += (Math.random() - 0.5) * 70; vy += (Math.random() - 0.5) * 70;
+      ctx.lineTo(vx, vy);
+    }
+    ctx.stroke();
+  }
+
+  // 64-px tile grid
+  ctx.strokeStyle = 'rgba(145,130,115,0.55)';
+  ctx.lineWidth = 2;
+  for (let v = 0; v <= size; v += 64) {
+    ctx.beginPath(); ctx.moveTo(v, 0); ctx.lineTo(v, size); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, v); ctx.lineTo(size, v); ctx.stroke();
+  }
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  cache.set('__villa_floor', tex);
+  return tex;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+
 export function grassTexture() {
   if (cache.has('__grass')) return cache.get('__grass');
   const size = 128;

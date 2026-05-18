@@ -1,10 +1,11 @@
 import * as THREE from 'three';
-import { letterTexture, grassTexture, woodTexture, leafTexture, sandTexture, waterTexture } from './textures.js';
+import { letterTexture, grassTexture, woodTexture, leafTexture, sandTexture, waterTexture,
+         villaWallTexture, villaRoofTexture, villaFloorTexture } from './textures.js';
 
 export const BLOCK = 1;
-const ISLAND_RADIUS = 32;
-const GRASS_RADIUS  = 30;   // grass disc
-const SAND_RADIUS   = 38;   // sand ring (beach)
+const ISLAND_RADIUS = 52;
+const GRASS_RADIUS  = 55;   // grass disc
+const SAND_RADIUS   = 68;   // sand ring (beach)
 const WATER_Y       = -0.5; // world height of water surface
 
 // Exported so main.js can animate the UV scroll each frame
@@ -17,17 +18,18 @@ export function updateWater(dt) {
 
 export function buildWorld(scene) {
   const ground = makeGround(scene);
+  const villaBlocks = buildVilla(scene);      // build villa first so trees/letters don't overlap
   const letterBlocks = scatterLetters(scene);
   const treeColliders = buildTrees(scene);
   const eatingSpots = makeEatingSpots(scene);
-  return { ground, letterBlocks, treeColliders, eatingSpots };
+  return { ground, letterBlocks, treeColliders, eatingSpots, villaBlocks };
 }
 
 function makeGround(scene) {
   // ── Water (large plane behind everything) ─────────────────────────────
   _waterTex = waterTexture();
-  _waterTex.repeat.set(40, 40);
-  const waterGeo = new THREE.PlaneGeometry(500, 500);
+  _waterTex.repeat.set(100, 100);
+  const waterGeo = new THREE.PlaneGeometry(1200, 1200);
   const waterMat = new THREE.MeshStandardMaterial({
     map: _waterTex,
     color: 0x29b6d8,
@@ -44,6 +46,7 @@ function makeGround(scene) {
   // ── Sand disc (beach ring visible beyond grass) ────────────────────────
   const sandTex = sandTexture();
   sandTex.repeat.set(22, 22);
+  sandTex.repeat.set(45, 45);
   const sandGeo = new THREE.CircleGeometry(SAND_RADIUS, 72);
   const sandMat = new THREE.MeshStandardMaterial({ map: sandTex, roughness: 1.0 });
   const sandMesh = new THREE.Mesh(sandGeo, sandMat);
@@ -129,6 +132,134 @@ function makeEatingSpots(scene) {
   return spots;
 }
 
+// ── Villa ─────────────────────────────────────────────────────────────────
+
+/**
+ * Builds an enterable villa centered at the world origin.
+ * Returns an array of wall Meshes that must be passed to the collision system.
+ *
+ * Layout (top-down):
+ *   W=7  → x: -7 .. +7   (15 blocks wide)
+ *   D=6  → z: -6 .. +6   (13 blocks deep)
+ *   H=5  → wall height 5 blocks (~5 m, airy interior)
+ *
+ * Door: south wall (z=+6), x=-1..+1, rows 0-1 removed (clear 2-unit gap).
+ * Player (height 1.6) fits through a 2-row gap — row 2 (y=2.5) is above head.
+ */
+function buildVilla(scene) {
+  const W = 7, D = 6, H = 5;
+  const wallBlocks = [];
+
+  // Shared geometry — reused by every wall block (one draw call per unique material)
+  const geo  = new THREE.BoxGeometry(1, 1, 1);
+  const wallTex = villaWallTexture();
+  const wallMat = new THREE.MeshStandardMaterial({ map: wallTex, roughness: 0.75 });
+
+  function addBlock(x, yRow, z) {
+    const m = new THREE.Mesh(geo, wallMat);
+    m.position.set(x, yRow + 0.5, z);
+    m.castShadow  = true;
+    m.receiveShadow = true;
+    scene.add(m);
+    wallBlocks.push(m);
+  }
+
+  // ── South wall (z = +D, front/entrance) ────────────────────────────────
+  // Door: |x| ≤ 1, rows 0 & 1 removed.  Rows 2-4 remain as lintel.
+  for (let x = -W; x <= W; x++) {
+    for (let y = 0; y < H; y++) {
+      if (Math.abs(x) <= 1 && y < 2) continue; // door opening
+      addBlock(x, y, D);
+    }
+  }
+
+  // ── North wall (z = -D, back) ───────────────────────────────────────────
+  // Two windows: |x| ∈ [3,4] at rows 1-2
+  for (let x = -W; x <= W; x++) {
+    for (let y = 0; y < H; y++) {
+      if (Math.abs(x) >= 3 && Math.abs(x) <= 4 && y >= 1 && y <= 2) continue;
+      addBlock(x, y, -D);
+    }
+  }
+
+  // ── East wall (x = +W) — z from -(D-1) to +(D-1) (corners belong to N/S) ──
+  // Window: |z| ≤ 1 at rows 1-2
+  for (let z = -(D - 1); z <= D - 1; z++) {
+    for (let y = 0; y < H; y++) {
+      if (Math.abs(z) <= 1 && y >= 1 && y <= 2) continue;
+      addBlock(W, y, z);
+    }
+  }
+
+  // ── West wall (x = -W) ─────────────────────────────────────────────────
+  for (let z = -(D - 1); z <= D - 1; z++) {
+    for (let y = 0; y < H; y++) {
+      if (Math.abs(z) <= 1 && y >= 1 && y <= 2) continue;
+      addBlock(-W, y, z);
+    }
+  }
+
+  // ── Entrance columns (outside south wall, flanking the door) ───────────
+  const colGeo = new THREE.BoxGeometry(0.7, 1, 0.7);
+  const colMat = new THREE.MeshStandardMaterial({ color: 0xf0e8d8, roughness: 0.5 });
+  for (const cx of [-3, 3]) {
+    for (let y = 0; y < H + 1; y++) {  // one block taller than walls
+      const col = new THREE.Mesh(colGeo, colMat);
+      col.position.set(cx, y + 0.5, D + 1);
+      col.castShadow = true;
+      scene.add(col);
+      wallBlocks.push(col);             // participates in collision
+    }
+  }
+
+  // ── Terracotta roof (decorative mesh, no collision) ────────────────────
+  const roofTex = villaRoofTexture();
+  roofTex.repeat.set(6, 5);
+  const roofMat  = new THREE.MeshStandardMaterial({ map: roofTex, roughness: 0.82 });
+  const roofMesh = new THREE.Mesh(new THREE.BoxGeometry(W * 2 + 2.6, 0.5, D * 2 + 2.6), roofMat);
+  roofMesh.position.set(0, H + 0.25, 0);
+  roofMesh.castShadow   = true;
+  roofMesh.receiveShadow = true;
+  scene.add(roofMesh);
+
+  // ── Cornice band at the top of all walls ───────────────────────────────
+  const cornMesh = new THREE.Mesh(
+    new THREE.BoxGeometry(W * 2 + 1.8, 0.35, D * 2 + 1.8),
+    new THREE.MeshStandardMaterial({ color: 0xe6d8c4, roughness: 0.65 })
+  );
+  cornMesh.position.set(0, H - 0.18, 0);
+  scene.add(cornMesh);
+
+  // ── Marble interior floor ──────────────────────────────────────────────
+  const floorTex = villaFloorTexture();
+  floorTex.repeat.set(5, 4);
+  const floorMat  = new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.52, metalness: 0.04 });
+  const floorMesh = new THREE.Mesh(new THREE.PlaneGeometry(W * 2 - 1, D * 2 - 1), floorMat);
+  floorMesh.rotation.x = -Math.PI / 2;
+  floorMesh.position.set(0, 0.02, 0);
+  floorMesh.receiveShadow = true;
+  scene.add(floorMesh);
+
+  // ── Stone approach path (south entrance to spawn) ─────────────────────
+  const pathMat  = new THREE.MeshStandardMaterial({ color: 0xcbbfa8, roughness: 0.92 });
+  const pathMesh = new THREE.Mesh(new THREE.PlaneGeometry(4, 10), pathMat);
+  pathMesh.rotation.x = -Math.PI / 2;
+  pathMesh.position.set(0, 0.015, D + 5);  // z = 6..16, centred on door
+  pathMesh.receiveShadow = true;
+  scene.add(pathMesh);
+
+  // ── Golden chandelier (decorative, visible from inside) ───────────────
+  const chandMat  = new THREE.MeshStandardMaterial({
+    color: 0xffd700, emissive: 0xffaa00, emissiveIntensity: 0.35,
+    metalness: 0.85, roughness: 0.15,
+  });
+  const chandMesh = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.28, 1.4), chandMat);
+  chandMesh.position.set(0, H - 0.7, 0);   // hanging near ceiling
+  scene.add(chandMesh);
+
+  return wallBlocks;
+}
+
 function scatterLetters(scene) {
   const blocks = [];
   const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
@@ -154,7 +285,7 @@ function positionRing(count) {
   const GOLDEN = Math.PI * (3 - Math.sqrt(5)); // ≈ 137.5°
   return Array.from({ length: count }, (_, i) => {
     const t      = (i + 0.5) / count;
-    const radius = 3 + (ISLAND_RADIUS - 5) * Math.sqrt(t); // √t = uniform area
+    const radius = 15 + (ISLAND_RADIUS - 17) * Math.sqrt(t); // inner 15 keeps blocks outside villa
     const angle  = i * GOLDEN;
     return [Math.round(Math.cos(angle) * radius) + 0.5,
             Math.round(Math.sin(angle) * radius) + 0.5];
@@ -175,12 +306,12 @@ function makeLetterBlock(letter) {
 
 function buildTrees(scene) {
   const GOLDEN = Math.PI * (3 - Math.sqrt(5));
-  const count = 14;
+  const count = 22;
   const colliders = [];
   for (let i = 0; i < count; i++) {
     const angle  = i * GOLDEN + Math.PI * 0.6;
     const t      = (i + 0.5) / count;
-    const radius = 6 + (ISLAND_RADIUS - 10) * Math.sqrt(t);
+    const radius = 15 + (ISLAND_RADIUS - 17) * Math.sqrt(t);
     const x = Math.round(Math.cos(angle) * radius);
     const z = Math.round(Math.sin(angle) * radius);
     const h = 4 + (i % 2);

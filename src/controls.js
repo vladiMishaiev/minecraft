@@ -131,7 +131,7 @@ function createDesktopControls(camera, domElement) {
     obj.position.z += dz;
     if (collidesAt(obj.position, blocks, solids)) obj.position.z -= dz;
 
-    const limit = 33.5;
+    const limit = 58;
     obj.position.x = Math.max(-limit, Math.min(limit, obj.position.x));
     obj.position.z = Math.max(-limit, Math.min(limit, obj.position.z));
   }
@@ -330,7 +330,7 @@ function createMobileControls(camera, domElement) {
     camera.position.z += dz;
     if (collidesAt(camera.position, blocks, solids)) camera.position.z -= dz;
 
-    const limit = 33.5;
+    const limit = 58;
     camera.position.x = Math.max(-limit, Math.min(limit, camera.position.x));
     camera.position.z = Math.max(-limit, Math.min(limit, camera.position.z));
   }

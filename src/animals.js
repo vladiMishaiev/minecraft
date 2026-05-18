@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-const ISLAND_LIMIT = 27;
+const ISLAND_LIMIT = 50;
 const SEA_Y        = -0.28;   // where sea creatures swim (above water plane at -0.5)
 const SEA_MIN_R    = 36;      // inner edge of sea creature orbit ring
 const SEA_MAX_R    = 54;      // outer edge
